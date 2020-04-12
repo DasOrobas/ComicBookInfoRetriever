@@ -13,6 +13,7 @@ using System.Net;
 using AngleSharp.Html.Parser;
 using AngleSharp.Html.Dom;
 using System.IO.Compression;
+using AngleSharp.Dom;
 
 namespace ComicBookInfoRetriever
 {
@@ -21,27 +22,24 @@ namespace ComicBookInfoRetriever
         private static HttpClient httpClient = new HttpClient();
         [FunctionName("RetrieveCover")]
         public static async Task<IActionResult> Run(
-            [HttpTrigger(AuthorizationLevel.Function, "get", "post", Route = null)] HttpRequest req,
+            [HttpTrigger(AuthorizationLevel.Function, "get", Route = null)] HttpRequest req,
             ILogger log)
         {
             try
             {
-                string issueNumber = "528";
-                string seriesTitle = "Adventures of Superman";
-                string year = "1995";
+                
+                string issueNumber = req.Query["issueNumber"];
+                string seriesTitle = req.Query["seriesName"];
+                string year = req.Query["year"];
+           
 
                 log.LogInformation("C# HTTP trigger function processed a request.");
 
-                string name = req.Query["name"];
+           
 
-                string requestBody = await new StreamReader(req.Body).ReadToEndAsync();
-                dynamic data = JsonConvert.DeserializeObject(requestBody);
-                name = name ?? data?.name;
+  
 
-                string responseMessage = string.IsNullOrEmpty(name)
-                    ? "This HTTP triggered function executed successfully. Pass a name in the query string or in the request body for a personalized response."
-                    : $"Hello, {name}. This HTTP triggered function executed successfully.";
-                string url = "https://www.comics.org/search/advanced/process/?target=issue_cover&method=icontains&logic=False&keywords=&title=&feature=&job_number=&pages=&pages_uncertain=&script=&pencils=&inks=&colors=&letters=&story_editing=&first_line=&characters=&synopsis=&reprint_notes=&story_reprinted=&notes=&issues=528&volume=&issue_title=&variant_name=&is_variant=&issue_date=&indicia_frequency=&price=&issue_pages=&issue_pages_uncertain=&issue_editing=&isbn=&barcode=&rating=&issue_notes=&issue_reprinted=&is_indexed=&in_selected_collection=on&order1=series&order2=date&order3=&start_date=&end_date=&updated_since=&pub_name=&pub_notes=&brand_group=&brand_emblem=&brand_notes=&indicia_publisher=&is_surrogate=&ind_pub_notes=&series=Adventures+of+Superman&series_year_began=&series_notes=&tracking_notes=&issue_count=&is_comics=&color=&dimensions=&paper_stock=&binding=&publishing_format=";
+                string url = $"https://www.comics.org/search/advanced/process/?target=issue_cover&method=icontains&logic=False&keywords=&title=&feature=&job_number=&pages=&pages_uncertain=&script=&pencils=&inks=&colors=&letters=&story_editing=&first_line=&characters=&synopsis=&reprint_notes=&story_reprinted=&notes=&issues={issueNumber}&volume=&issue_title=&variant_name=&is_variant=&issue_date=&indicia_frequency=&price=&issue_pages=&issue_pages_uncertain=&issue_editing=&isbn=&barcode=&rating=&issue_notes=&issue_reprinted=&is_indexed=&in_selected_collection=on&order1=series&order2=date&order3=&start_date=&end_date=&updated_since=&pub_name=&pub_notes=&brand_group=&brand_emblem=&brand_notes=&indicia_publisher=&is_surrogate=&ind_pub_notes=&series={seriesTitle.Replace(" ", "+")}&series_year_began=&series_notes=&tracking_notes=&issue_count=&is_comics=&color=&dimensions=&paper_stock=&binding=&publishing_format=";
                 using (var request = new HttpRequestMessage(HttpMethod.Get, new Uri(url)))
                 {
                     request.Headers.TryAddWithoutValidation("Accept", "text/html,application/xhtml+xml,application/xml");
@@ -58,14 +56,32 @@ namespace ComicBookInfoRetriever
                             var stringResult = await streamReader.ReadToEndAsync().ConfigureAwait(false);
                             HtmlParser parser = new HtmlParser();
                             IHtmlDocument document = parser.ParseDocument(stringResult);
-                            var issue = document.All.FirstOrDefault(x => x.ClassName == "covers" && x.InnerHtml.Contains(issueNumber) && x.InnerHtml.Contains(seriesTitle) && x.InnerHtml.Contains(year));
+                            var issues = document.All.Where(x => x.ClassName == "covers" && x.InnerHtml.Contains(issueNumber, StringComparison.InvariantCultureIgnoreCase) && x.InnerHtml.Contains(seriesTitle, StringComparison.InvariantCultureIgnoreCase));
 
+                            IElement issue;
+                            if(year == null)
+                            {
+                                issue = issues.FirstOrDefault();
+                            }
+                            else
+                            {
+                               issue = issues.FirstOrDefault(x => x.InnerHtml.Contains(year, StringComparison.InvariantCultureIgnoreCase));
+                            }
+
+
+                            if(issue == null)
+                            {
+                                return new NotFoundResult();
+                            }
                             var src = issue.Children.ElementAt(0).Children.ElementAt(0).Children.ElementAt(0).Attributes.ElementAt(0).Value;
-                         
+                            var downloadedFilePath = await DownloadFile(src);
+
+                      
+                            return new PhysicalFileResult(downloadedFilePath, "image/jpeg");
                         }
                     }
                 }
-                return new OkObjectResult(responseMessage);
+        
 
             }
             catch (Exception ex)
@@ -74,6 +90,27 @@ namespace ComicBookInfoRetriever
                 throw;
             }
            
+        }
+
+        public static async Task<string> DownloadFile(string url)
+        {
+            // check if png is possible in db
+
+            var fileInfo = new FileInfo($"{Guid.NewGuid().ToString()}.jpg");
+
+            var response = await httpClient.GetAsync(url);
+            response.EnsureSuccessStatusCode();
+            using (var ms = await response.Content.ReadAsStreamAsync())
+            {
+                using (var fs = File.Create(fileInfo.FullName))
+                {
+                    ms.Seek(0, SeekOrigin.Begin);
+                    ms.CopyTo(fs);
+                }
+
+            }
+
+            return fileInfo.FullName;
         }
     }
 }
