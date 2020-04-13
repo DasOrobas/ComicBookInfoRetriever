@@ -31,15 +31,13 @@ namespace ComicBookInfoRetriever
                 string issueNumber = req.Query["issueNumber"];
                 string seriesTitle = req.Query["seriesName"];
                 string year = req.Query["year"];
-           
+                issueNumber = issueNumber?.Trim();
+                seriesTitle = seriesTitle?.Trim();
+                year = year?.Trim();
 
-                log.LogInformation("C# HTTP trigger function processed a request.");
+                log.LogInformation("C# HTTP trigger function processed a request.");    
 
-           
-
-  
-
-                string url = $"https://www.comics.org/search/advanced/process/?target=issue_cover&method=icontains&logic=False&keywords=&title=&feature=&job_number=&pages=&pages_uncertain=&script=&pencils=&inks=&colors=&letters=&story_editing=&first_line=&characters=&synopsis=&reprint_notes=&story_reprinted=&notes=&issues={issueNumber}&volume=&issue_title=&variant_name=&is_variant=&issue_date=&indicia_frequency=&price=&issue_pages=&issue_pages_uncertain=&issue_editing=&isbn=&barcode=&rating=&issue_notes=&issue_reprinted=&is_indexed=&in_selected_collection=on&order1=series&order2=date&order3=&start_date=&end_date=&updated_since=&pub_name=&pub_notes=&brand_group=&brand_emblem=&brand_notes=&indicia_publisher=&is_surrogate=&ind_pub_notes=&series={seriesTitle.Replace(" ", "+")}&series_year_began=&series_notes=&tracking_notes=&issue_count=&is_comics=&color=&dimensions=&paper_stock=&binding=&publishing_format=";
+                  string url = $"https://www.comics.org/search/advanced/process/?target=issue_cover&method=icontains&logic=False&keywords=&title=&feature=&job_number=&pages=&pages_uncertain=&script=&pencils=&inks=&colors=&letters=&story_editing=&first_line=&characters=&synopsis=&reprint_notes=&story_reprinted=&notes=&issues={issueNumber}&volume=&issue_title=&variant_name=&is_variant=&issue_date=&indicia_frequency=&price=&issue_pages=&issue_pages_uncertain=&issue_editing=&isbn=&barcode=&rating=&issue_notes=&issue_reprinted=&is_indexed=&in_selected_collection=on&order1=series&order2=date&order3=&start_date=&end_date=&updated_since=&pub_name=&pub_notes=&brand_group=&brand_emblem=&brand_notes=&indicia_publisher=&is_surrogate=&ind_pub_notes=&series={seriesTitle.Replace(" ", "+")}&series_year_began=&series_notes=&tracking_notes=&issue_count=&is_comics=&color=&dimensions=&paper_stock=&binding=&publishing_format=";
                 using (var request = new HttpRequestMessage(HttpMethod.Get, new Uri(url)))
                 {
                     request.Headers.TryAddWithoutValidation("Accept", "text/html,application/xhtml+xml,application/xml");
@@ -68,21 +66,23 @@ namespace ComicBookInfoRetriever
                                issue = issues.FirstOrDefault(x => x.InnerHtml.Contains(year, StringComparison.InvariantCultureIgnoreCase));
                             }
 
-
                             if(issue == null)
                             {
                                 return new NotFoundResult();
                             }
                             var src = issue.Children.ElementAt(0).Children.ElementAt(0).Children.ElementAt(0).Attributes.ElementAt(0).Value;
-                            var downloadedFilePath = await DownloadFile(src);
 
-                      
-                            return new PhysicalFileResult(downloadedFilePath, "image/jpeg");
+                            string targetFileName = $"{seriesTitle}_{issueNumber}_{year}.jpg";
+                            string targetFilePath = Path.Combine(Environment.CurrentDirectory, targetFileName);
+                            if (!File.Exists(targetFilePath))
+                            {
+                                var downloadedFilePath = await DownloadFile(src, targetFileName);
+                            }               
+                                       
+                            return new PhysicalFileResult(targetFilePath, "image/jpeg");
                         }
                     }
                 }
-        
-
             }
             catch (Exception ex)
             {
@@ -92,11 +92,11 @@ namespace ComicBookInfoRetriever
            
         }
 
-        public static async Task<string> DownloadFile(string url)
+        public static async Task<string> DownloadFile(string url, string targetFileName)
         {
             // check if png is possible in db
 
-            var fileInfo = new FileInfo($"{Guid.NewGuid().ToString()}.jpg");
+            var fileInfo = new FileInfo(targetFileName);
 
             var response = await httpClient.GetAsync(url);
             response.EnsureSuccessStatusCode();
