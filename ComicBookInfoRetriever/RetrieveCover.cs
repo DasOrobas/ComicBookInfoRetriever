@@ -73,10 +73,10 @@ namespace ComicBookInfoRetriever
                             var src = issue.Children.ElementAt(0).Children.ElementAt(0).Children.ElementAt(0).Attributes.ElementAt(0).Value;
 
                             string targetFileName = $"{seriesTitle}_{issueNumber}_{year}.jpg";
-                            string targetFilePath = Path.Combine(Environment.CurrentDirectory, targetFileName);
+                            string targetFilePath = Path.Combine(Path.GetTempPath(), targetFileName);
                             if (!File.Exists(targetFilePath))
                             {
-                                var downloadedFilePath = await DownloadFile(src, targetFileName);
+                                var downloadedFilePath = await DownloadFile(src, targetFilePath);
                             }               
                                        
                             return new PhysicalFileResult(targetFilePath, "image/jpeg");
@@ -92,11 +92,11 @@ namespace ComicBookInfoRetriever
            
         }
 
-        public static async Task<string> DownloadFile(string url, string targetFileName)
+        public static async Task<string> DownloadFile(string url, string targetFilePath)
         {
             // check if png is possible in db
 
-            var fileInfo = new FileInfo(targetFileName);
+            var fileInfo = new FileInfo(targetFilePath);
 
             var response = await httpClient.GetAsync(url);
             response.EnsureSuccessStatusCode();
