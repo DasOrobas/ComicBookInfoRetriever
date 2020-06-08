@@ -62,9 +62,10 @@ namespace ComicBookInfoRetriever
                         if (issue != null)
                         {
                             weightedResult.Success = true;
+                            weightedResult.parameters = parameters;
+                            weightedResult.ImageSource = issue.Children.ElementAt(0).Children.ElementAt(0).Children.ElementAt(0).Attributes.ElementAt(0).Value;
+
                         }
-                        weightedResult.parameters = parameters;
-                        weightedResult.ImageSource = issue.Children.ElementAt(0).Children.ElementAt(0).Children.ElementAt(0).Attributes.ElementAt(0).Value;
 
                         return weightedResult;
                     }

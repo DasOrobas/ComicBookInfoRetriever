@@ -14,6 +14,7 @@ using AngleSharp.Html.Parser;
 using AngleSharp.Html.Dom;
 using System.IO.Compression;
 using AngleSharp.Dom;
+using System.Collections.Generic;
 
 namespace ComicBookInfoRetriever
 {
@@ -31,57 +32,39 @@ namespace ComicBookInfoRetriever
                 string issueNumber = req.Query["issueNumber"];
                 string seriesTitle = req.Query["seriesName"];
                 string year = req.Query["year"];
+
                 issueNumber = issueNumber?.Trim();
                 seriesTitle = seriesTitle?.Trim();
                 year = year?.Trim();
 
-                log.LogInformation("C# HTTP trigger function processed a request.");    
-
-                 string url = $"https://www.comics.org/search/advanced/process/?target=issue_cover&method=icontains&logic=False&keywords=&title=&feature=&job_number=&pages=&pages_uncertain=&script=&pencils=&inks=&colors=&letters=&story_editing=&first_line=&characters=&synopsis=&reprint_notes=&story_reprinted=&notes=&issues={issueNumber}&volume=&issue_title=&variant_name=&is_variant=&issue_date=&indicia_frequency=&price=&issue_pages=&issue_pages_uncertain=&issue_editing=&isbn=&barcode=&rating=&issue_notes=&issue_reprinted=&is_indexed=&in_selected_collection=on&order1=series&order2=date&order3=&start_date=&end_date=&updated_since=&pub_name=&pub_notes=&brand_group=&brand_emblem=&brand_notes=&indicia_publisher=&is_surrogate=&ind_pub_notes=&series={seriesTitle.Replace(" ", "+")}&series_year_began=&series_notes=&tracking_notes=&issue_count=&is_comics=&color=&dimensions=&paper_stock=&binding=&publishing_format=";
-                using (var request = new HttpRequestMessage(HttpMethod.Get, new Uri(url)))
+                List<(string, string)> parameters = new List<(string, string)>
                 {
-                    request.Headers.TryAddWithoutValidation("Accept", "text/html,application/xhtml+xml,application/xml");
-                    request.Headers.TryAddWithoutValidation("Accept-Encoding", "gzip, deflate");
-                    request.Headers.TryAddWithoutValidation("User-Agent", "Mozilla/5.0 (Windows NT 6.2; WOW64; rv:19.0) Gecko/20100101 Firefox/19.0");
-                    request.Headers.TryAddWithoutValidation("Accept-Charset", "ISO-8859-1");
-                    using (var response = await httpClient.SendAsync(request).ConfigureAwait(false))
+                    ("issueNumber", issueNumber),
+                    ("seriesTitle", seriesTitle),
+                    ("issueYear", year)
+                };
+
+                ComicsDatabaseAdvancedQuery advancedQuery = new ComicsDatabaseAdvancedQuery();
+                var result = await advancedQuery.Execute(parameters.ToArray(), httpClient);
+                ComicsDatabaseNormalSearch normalSearch = new ComicsDatabaseNormalSearch();
+                var result2 = await normalSearch.Execute(parameters.ToArray(), httpClient);
+
+                if (result.Success)
+                {
+                    string targetFileName = $"{seriesTitle}_{issueNumber}_{year}.jpg";
+                    string targetFilePath = Path.Combine(Path.GetTempPath(), targetFileName);
+                    if (!File.Exists(targetFilePath))
                     {
-                        response.EnsureSuccessStatusCode();
-                        using (var responseStream = await response.Content.ReadAsStreamAsync().ConfigureAwait(false))
-                        using (var decompressedStream = new GZipStream(responseStream, CompressionMode.Decompress))
-                        using (var streamReader = new StreamReader(decompressedStream))
-                        {
-                            var stringResult = await streamReader.ReadToEndAsync().ConfigureAwait(false);
-                            HtmlParser parser = new HtmlParser();
-                            IHtmlDocument document = parser.ParseDocument(stringResult);
-                            var issues = document.All.Where(x => x.ClassName == "covers" && x.InnerHtml.Contains(issueNumber, StringComparison.InvariantCultureIgnoreCase) && x.InnerHtml.Contains(seriesTitle, StringComparison.InvariantCultureIgnoreCase));
-
-                            IElement issue;
-                            if (year == null)
-                            {
-                                issue = issues.FirstOrDefault();
-                            }
-                            else
-                            {
-                                issue = issues.FirstOrDefault(x => x.InnerHtml.Contains(year, StringComparison.InvariantCultureIgnoreCase));
-                            }
-
-
-                            var src = issue.Children.ElementAt(0).Children.ElementAt(0).Children.ElementAt(0).Attributes.ElementAt(0).Value;
-
-
-
-                            string targetFileName = $"{seriesTitle}_{issueNumber}_{year}.jpg";
-                            string targetFilePath = Path.Combine(Path.GetTempPath(), targetFileName);
-                            if (!File.Exists(targetFilePath))
-                            {
-                                var downloadedFilePath = await DownloadFile(src, targetFilePath);
-                            }               
-                                       
-                            return new PhysicalFileResult(targetFilePath, "image/jpeg");
-                        }
+                        var downloadedFilePath = await DownloadFile(result.ImageSource, targetFilePath);
                     }
+
+                    return new PhysicalFileResult(targetFilePath, "image/jpeg");
                 }
+                else
+                {
+                    return new NotFoundObjectResult($"{seriesTitle} {issueNumber} {issueNumber}");
+                }
+
             }
             catch (Exception ex)
             {
