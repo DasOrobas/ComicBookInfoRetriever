@@ -2,11 +2,9 @@
 {
     public class WeightedResult
     {
-        public string IssueNumber { get; set; }
+        public (string parameterNames, string parameterValues)[] parameters;
 
-        public string SeriesName { get; set; }
-
-        public string Year { get; set; }
+        public string ImageSource { get; set; }
 
         public bool Success { get; set; }  
     }

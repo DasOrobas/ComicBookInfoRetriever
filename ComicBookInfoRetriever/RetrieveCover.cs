@@ -66,55 +66,6 @@ namespace ComicBookInfoRetriever
                                 issue = issues.FirstOrDefault(x => x.InnerHtml.Contains(year, StringComparison.InvariantCultureIgnoreCase));
                             }
 
-                            if (issue == null)
-                            {
-
-                                using (var standardSearchRequest = new HttpRequestMessage(HttpMethod.Get, new Uri($"https://www.comics.org/searchNew/?q={WebUtility.UrlEncode(seriesTitle)}+{issueNumber}+{year}+&search_object=issue")))
-                                {
-                                    standardSearchRequest.Headers.TryAddWithoutValidation("Accept", "text/html,application/xhtml+xml,application/xml");
-                                    standardSearchRequest.Headers.TryAddWithoutValidation("Accept-Encoding", "gzip, deflate");
-                                    standardSearchRequest.Headers.TryAddWithoutValidation("User-Agent", "Mozilla/5.0 (Windows NT 6.2; WOW64; rv:19.0) Gecko/20100101 Firefox/19.0");
-                                    standardSearchRequest.Headers.TryAddWithoutValidation("Accept-Charset", "ISO-8859-1");
-
-                                    using (var standardSearchResponse = await httpClient.SendAsync(standardSearchRequest).ConfigureAwait(false))
-                                    {
-                                        response.EnsureSuccessStatusCode();
-                                        using (var standardSearchResponseStream = await standardSearchResponse.Content.ReadAsStreamAsync().ConfigureAwait(false))
-                                        using (var standardSearchDecompressedStream = new GZipStream(standardSearchResponseStream, CompressionMode.Decompress))
-                                        using (var standardSearchStreamReader = new StreamReader(standardSearchDecompressedStream))
-                                        {
-                                            var standardSearchResult = await standardSearchStreamReader.ReadToEndAsync().ConfigureAwait(false);
-                                            IHtmlDocument standardSearchDocument = parser.ParseDocument(standardSearchResult);
-                                            issues = standardSearchDocument.All.Where(x => x.ClassName == "listing_even" || x.ClassName == "listing_odd");
-
-                                            if (year == null)
-                                            {
-                                                issue = issues.FirstOrDefault(x => x.InnerHtml.Contains(issueNumber, StringComparison.InvariantCultureIgnoreCase) && x.InnerHtml.Contains(seriesTitle, StringComparison.InvariantCultureIgnoreCase));
-                                            }         
-                                            else
-                                            {
-                                                issue = issues.FirstOrDefault(x => x.InnerHtml.Contains(issueNumber, StringComparison.InvariantCultureIgnoreCase) && x.InnerHtml.Contains(seriesTitle, StringComparison.InvariantCultureIgnoreCase) && x.InnerHtml.Contains(year));
-                                            }
-
-                                            if (issue != null)
-                                            {
-
-                                                using (var issueWebPageResponse = await httpClient.SendAsync(request).ConfigureAwait(false))
-                                                {
-
-                                                }
-
-                                            }
-                                            else
-                                            {
-
-                                                return new NotFoundObjectResult($"{seriesTitle} {issueNumber} {issueNumber}");
-                                            }
-                                        }
-                                    }
-                                }
-
-                            }
 
                             var src = issue.Children.ElementAt(0).Children.ElementAt(0).Children.ElementAt(0).Attributes.ElementAt(0).Value;
 
