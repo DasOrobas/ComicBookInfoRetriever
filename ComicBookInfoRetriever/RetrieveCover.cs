@@ -44,15 +44,29 @@ namespace ComicBookInfoRetriever
                     ("issueYear", year)
                 };
 
-                ComicsDatabaseAdvancedQuery advancedQuery = new ComicsDatabaseAdvancedQuery();
-                var result = await advancedQuery.Execute(parameters.ToArray(), httpClient);
-                ComicsDatabaseNormalSearch normalSearch = new ComicsDatabaseNormalSearch();
-                var result2 = await normalSearch.Execute(parameters.ToArray(), httpClient);
+                string targetFileName = $"{seriesTitle}_{issueNumber}_{year}.jpg";
+                string targetFilePath = Path.Combine(Path.GetTempPath(), targetFileName);
+                if (!File.Exists(targetFilePath))
+                {
+
+                }
+                else { 
+
+
+                    ComicsDatabaseNormalSearch normalSearch = new ComicsDatabaseNormalSearch();
+                var result = await normalSearch.Execute(parameters.ToArray(), httpClient);
+
+                if (!result.Success)
+                {
+                    ComicsDatabaseAdvancedQuery advancedQuery = new ComicsDatabaseAdvancedQuery();
+                    result = await advancedQuery.Execute(parameters.ToArray(), httpClient);
+                }               
+                
 
                 if (result.Success)
                 {
                     string targetFileName = $"{seriesTitle}_{issueNumber}_{year}.jpg";
-                    string targetFilePath = Path.Combine(Path.GetTempPath(), targetFileName);
+                    
                     if (!File.Exists(targetFilePath))
                     {
                         var downloadedFilePath = await DownloadFile(result.ImageSource, targetFilePath);

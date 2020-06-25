@@ -5,7 +5,9 @@ VisualStudioVersion = 16.0.29411.108
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "ComicBookInfoRetriever", "ComicBookInfoRetriever\ComicBookInfoRetriever.csproj", "{FA2EEAF5-2ED2-4C04-B673-A543591C30EE}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "UnitTests", "UnitTests\UnitTests.csproj", "{0D2A5747-9D6F-4863-9074-DF0D5FF3AD5F}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "UnitTests", "UnitTests\UnitTests.csproj", "{0D2A5747-9D6F-4863-9074-DF0D5FF3AD5F}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "FunctionalTests", "FunctionalTests\FunctionalTests.csproj", "{B87D91D2-B5F6-46AB-9D31-48A8D48B7385}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -21,6 +23,10 @@ Global
 		{0D2A5747-9D6F-4863-9074-DF0D5FF3AD5F}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{0D2A5747-9D6F-4863-9074-DF0D5FF3AD5F}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{0D2A5747-9D6F-4863-9074-DF0D5FF3AD5F}.Release|Any CPU.Build.0 = Release|Any CPU
+		{B87D91D2-B5F6-46AB-9D31-48A8D48B7385}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{B87D91D2-B5F6-46AB-9D31-48A8D48B7385}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{B87D91D2-B5F6-46AB-9D31-48A8D48B7385}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{B87D91D2-B5F6-46AB-9D31-48A8D48B7385}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

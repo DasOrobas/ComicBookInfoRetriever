@@ -1,11 +1,13 @@
 ﻿using AngleSharp.Html.Dom;
 using AngleSharp.Html.Parser;
+using Microsoft.Web.Helpers;
 using System;
 using System.IO;
 using System.IO.Compression;
 using System.Linq;
 using System.Net;
 using System.Net.Http;
+using System.Text.Encodings.Web;
 using System.Threading.Tasks;
 
 namespace ComicBookInfoRetriever
@@ -17,7 +19,7 @@ namespace ComicBookInfoRetriever
 
         public ComicsDatabaseNormalSearch()
         {
-            this.requiredParameters = new[] { "issueYear", "issueYear", "seriesTitle" };
+            this.requiredParameters = new[] { "issueYear", "issueNumber", "seriesTitle" };
         }
 
 
@@ -54,43 +56,66 @@ namespace ComicBookInfoRetriever
                         var standardSearchResult = await standardSearchStreamReader.ReadToEndAsync().ConfigureAwait(false);
                         HtmlParser parser = new HtmlParser();
                         IHtmlDocument standardSearchDocument = parser.ParseDocument(standardSearchResult);
-                        var issues = standardSearchDocument.All.Where(x => x.ClassName == "listing_even" || x.ClassName == "listing_odd");
+                        var resultTable = standardSearchDocument.GetElementsByClassName("listing left");                       
+
+                        if (resultTable.Count() > 0)
+                        {
+                            var issue = resultTable.First().GetElementsByTagName("TR").Where(x => x.InnerHtml.Contains(seriesTitle, StringComparison.InvariantCultureIgnoreCase) && x.InnerHtml.Contains(issueYear, StringComparison.InvariantCultureIgnoreCase) && x.InnerHtml.Contains(issueYear, StringComparison.InvariantCultureIgnoreCase)).FirstOrDefault();
+                            
+                            if(issue != null)
+                            {
+                                var anchor = issue.GetElementsByTagName("A").FirstOrDefault();
+                                var urlSection = anchor?.Attributes.FirstOrDefault();
+
+                                UriBuilder builder = new UriBuilder("https", "comics.org", -1, urlSection.Value);
+
+                                using (var issuePageRequest = new HttpRequestMessage(HttpMethod.Get, builder.Uri))
+                                {
+                                    issuePageRequest.Headers.TryAddWithoutValidation("Accept", "text/html,application/xhtml+xml,application/xml");
+                                    issuePageRequest.Headers.TryAddWithoutValidation("Accept-Encoding", "gzip, deflate");
+                                    issuePageRequest.Headers.TryAddWithoutValidation("User-Agent", "Mozilla/5.0 (Windows NT 6.2; WOW64; rv:19.0) Gecko/20100101 Firefox/19.0");
+                                    issuePageRequest.Headers.TryAddWithoutValidation("Accept-Charset", "ISO-8859-1");
+
+                                    using (var issuePageResponse = await httpClient.SendAsync(issuePageRequest).ConfigureAwait(false))
+                                    {
+                                        issuePageResponse.EnsureSuccessStatusCode();
+                                        using (var issuePageResponseStream = await issuePageResponse.Content.ReadAsStreamAsync().ConfigureAwait(false))
+                                        using (var issuePageResponseDecompressedStream = new GZipStream(issuePageResponseStream, CompressionMode.Decompress))
+                                        using (var issuePageResponseStreamReader = new StreamReader(issuePageResponseDecompressedStream))
+                                        {
+                                            var issuePageResult = await issuePageResponseStreamReader.ReadToEndAsync().ConfigureAwait(false);
+                                            HtmlParser issuePageparser = new HtmlParser();
+                                            IHtmlDocument issuePageDocument = parser.ParseDocument(issuePageResult);
+                                            var coverImage = issuePageDocument.Images.Where(x => x.ClassName == "cover_img").FirstOrDefault();
+
+                                            if(coverImage != null)
+                                            {
+                                                weightedResult.ImageSource = coverImage.Source;
+                                                weightedResult.Success = true;
+                                            }
+
+                                        }
+                                    }
+                                }
+                            }
+                            else
+                            {
+                                weightedResult.Success = false;
+                            }                            
+                        }
+                        else
+                        {
+                            weightedResult.Success = false;
+                        }
+                        
                     }
-                    //        standardSearchResponse.EnsureSuccessStatusCode();
-                    //        using (var standardSearchResponseStream = await standardSearchResponse.Content.ReadAsStreamAsync().ConfigureAwait(false))
-                    //        using (var standardSearchDecompressedStream = new GZipStream(standardSearchResponseStream, CompressionMode.Decompress))
-                    //        using (var standardSearchStreamReader = new StreamReader(standardSearchDecompressedStream))
-                    //        {
-                    //            var standardSearchResult = await standardSearchStreamReader.ReadToEndAsync().ConfigureAwait(false);
-                    //            HtmlParser parser = new HtmlParser();
-                    //            IHtmlDocument standardSearchDocument = parser.ParseDocument(standardSearchResult);
-                    //            var issues = standardSearchDocument.All.Where(x => x.ClassName == "listing_even" || x.ClassName == "listing_odd");
-
-                    //            //var issue = issues.FirstOrDefault(x => x.InnerHtml.Contains(issueNumber, StringComparison.InvariantCultureIgnoreCase) && x.InnerHtml.Contains(seriesTitle, StringComparison.InvariantCultureIgnoreCase) && x.InnerHtml.Contains(year));
-
-
-                    //          //  if (issue != null)
-                    //            //{
-
-                    //                //using (var issueWebPageResponse = await httpClient.SendAsync(request).ConfigureAwait(false))
-                    //                {
-
-                    //                }
-
+                    return weightedResult;
+                    
                 }
-                //            else
-                //            {
-
-                //                //return new NotFoundObjectResult($"{seriesTitle} {issueNumber} {issueNumber}");
             }
 
-                return weightedResult;
-                    }
-                }
-            }
+        }
 
-    //    }
-
-    //}
+    }
     
-//}
+} 
