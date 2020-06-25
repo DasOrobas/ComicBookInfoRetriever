@@ -39,7 +39,7 @@ namespace ComicBookInfoRetriever
             string issueNumber = parameters.First(x => x.parameterName.Equals("issueNumber", StringComparison.InvariantCultureIgnoreCase)).parameterValue;
             string seriesTitle = parameters.First(x => x.parameterName.Equals("seriesTitle", StringComparison.InvariantCultureIgnoreCase)).parameterValue;
 
-            using (var standardSearchRequest = new HttpRequestMessage(HttpMethod.Get, new Uri($"https://www.comics.org/searchNew/?q={WebUtility.UrlEncode(seriesTitle)}+{issueNumber}+{issueYear}+&search_object=issue")))
+            using (var standardSearchRequest = new HttpRequestMessage(HttpMethod.Get, new Uri($"https://www.comics.org/searchNew/?q={seriesTitle}{" "}{issueNumber}{" "}{issueYear}+&search_object=issue")))
             {
                 standardSearchRequest.Headers.TryAddWithoutValidation("Accept", "text/html,application/xhtml+xml,application/xml");
                 standardSearchRequest.Headers.TryAddWithoutValidation("Accept-Encoding", "gzip, deflate");

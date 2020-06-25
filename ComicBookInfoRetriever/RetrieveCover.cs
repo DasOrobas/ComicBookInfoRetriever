@@ -46,39 +46,37 @@ namespace ComicBookInfoRetriever
 
                 string targetFileName = $"{seriesTitle}_{issueNumber}_{year}.jpg";
                 string targetFilePath = Path.Combine(Path.GetTempPath(), targetFileName);
-                if (!File.Exists(targetFilePath))
+                if (File.Exists(targetFilePath))
                 {
-
-                }
-                else { 
-
-
-                    ComicsDatabaseNormalSearch normalSearch = new ComicsDatabaseNormalSearch();
-                var result = await normalSearch.Execute(parameters.ToArray(), httpClient);
-
-                if (!result.Success)
-                {
-                    ComicsDatabaseAdvancedQuery advancedQuery = new ComicsDatabaseAdvancedQuery();
-                    result = await advancedQuery.Execute(parameters.ToArray(), httpClient);
-                }               
-                
-
-                if (result.Success)
-                {
-                    string targetFileName = $"{seriesTitle}_{issueNumber}_{year}.jpg";
-                    
-                    if (!File.Exists(targetFilePath))
-                    {
-                        var downloadedFilePath = await DownloadFile(result.ImageSource, targetFilePath);
-                    }
-
                     return new PhysicalFileResult(targetFilePath, "image/jpeg");
                 }
                 else
                 {
-                    return new NotFoundObjectResult($"{seriesTitle} {issueNumber} {issueNumber}");
-                }
 
+
+                    ComicsDatabaseNormalSearch normalSearch = new ComicsDatabaseNormalSearch();
+                    var result = await normalSearch.Execute(parameters.ToArray(), httpClient);
+
+                    if (!result.Success)
+                    {
+                        ComicsDatabaseAdvancedQuery advancedQuery = new ComicsDatabaseAdvancedQuery();
+                        result = await advancedQuery.Execute(parameters.ToArray(), httpClient);
+                    }
+
+                    if (result.Success)
+                    {
+                        if (!File.Exists(targetFilePath))
+                        {
+                            var downloadedFilePath = await DownloadFile(result.ImageSource, targetFilePath);                            
+                        }
+
+                        return new PhysicalFileResult(targetFilePath, "image/jpeg");
+                    }
+                    else
+                    {
+                        return new NotFoundObjectResult($"{seriesTitle} {issueNumber} {issueNumber}");
+                    }
+                }
             }
             catch (Exception ex)
             {
