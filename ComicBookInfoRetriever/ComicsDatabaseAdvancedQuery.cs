@@ -87,7 +87,11 @@ namespace ComicBookInfoRetriever
                                             var issuePageResult = await issuePageResponseStreamReader.ReadToEndAsync().ConfigureAwait(false);
                                             HtmlParser issuePageparser = new HtmlParser();
                                             IHtmlDocument issuePageDocument = parser.ParseDocument(issuePageResult);
-                                            var coverImage = issuePageDocument.Images.Where(x => x.ClassName == "cover_img").FirstOrDefault();
+                                            var coverImage = issuePageDocument.Images.Where(x => x.ClassName == "cover_img" && x.Source.Contains("w200", StringComparison.InvariantCultureIgnoreCase)).FirstOrDefault();
+                                            if (coverImage == null)
+                                            {
+                                                coverImage = issuePageDocument.Images.Where(x => x.ClassName == "cover_img").FirstOrDefault();
+                                            }
 
                                             if (coverImage != null)
                                             {
